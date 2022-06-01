@@ -13,7 +13,6 @@
 #include "TestWorkspace.h"
 #include "XRefs.h"
 #include "support/Context.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/ScopedPrinter.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -54,11 +53,8 @@ struct ExpectedHint {
 };
 
 MATCHER_P2(HintMatcher, Expected, Code, llvm::to_string(Expected)) {
-  llvm::StringRef ExpectedView(Expected.Label);
-  if (arg.label != ExpectedView.trim(" ") ||
-      arg.paddingLeft != ExpectedView.startswith(" ") ||
-      arg.paddingRight != ExpectedView.endswith(" ")) {
-    *result_listener << "label is '" << arg.label << "'";
+  if (arg.label != Expected.Label) {
+    *result_listener << "label is " << arg.label;
     return false;
   }
   if (arg.range != Code.range(Expected.RangeName)) {
@@ -103,14 +99,14 @@ template <typename... ExpectedHints>
 void assertParameterHints(llvm::StringRef AnnotatedSource,
                           ExpectedHints... Expected) {
   ignore(Expected.Side = Left...);
-  assertHints(InlayHintKind::Parameter, AnnotatedSource, Expected...);
+  assertHints(InlayHintKind::ParameterHint, AnnotatedSource, Expected...);
 }
 
 template <typename... ExpectedHints>
 void assertTypeHints(llvm::StringRef AnnotatedSource,
                      ExpectedHints... Expected) {
   ignore(Expected.Side = Right...);
-  assertHints(InlayHintKind::Type, AnnotatedSource, Expected...);
+  assertHints(InlayHintKind::TypeHint, AnnotatedSource, Expected...);
 }
 
 template <typename... ExpectedHints>
@@ -119,7 +115,7 @@ void assertDesignatorHints(llvm::StringRef AnnotatedSource,
   Config Cfg;
   Cfg.InlayHints.Designators = true;
   WithContextValue WithCfg(Config::Key, std::move(Cfg));
-  assertHints(InlayHintKind::Designator, AnnotatedSource, Expected...);
+  assertHints(InlayHintKind::DesignatorHint, AnnotatedSource, Expected...);
 }
 
 TEST(ParameterHints, Smoke) {
@@ -574,7 +570,7 @@ TEST(ParameterHints, IncludeAtNonGlobalScope) {
   ASSERT_TRUE(bool(AST));
 
   // Ensure the hint for the call in foo.inc is NOT materialized in foo.cc.
-  EXPECT_EQ(hintsOfKind(*AST, InlayHintKind::Parameter).size(), 0u);
+  EXPECT_EQ(hintsOfKind(*AST, InlayHintKind::ParameterHint).size(), 0u);
 }
 
 TEST(TypeHints, Smoke) {
@@ -822,7 +818,7 @@ TEST(TypeHints, Aliased) {
   TU.ExtraArgs.push_back("-xc");
   auto AST = TU.build();
 
-  EXPECT_THAT(hintsOfKind(AST, InlayHintKind::Type), IsEmpty());
+  EXPECT_THAT(hintsOfKind(AST, InlayHintKind::TypeHint), IsEmpty());
 }
 
 TEST(DesignatorHints, Basic) {

@@ -1325,27 +1325,25 @@ bool fromJSON(const llvm::json::Value &Params, InlayHintsParams &R,
   return O && O.map("textDocument", R.textDocument) && O.map("range", R.range);
 }
 
-llvm::json::Value toJSON(const InlayHintKind &Kind) {
-  switch (Kind) {
-  case InlayHintKind::Type:
-    return 1;
-  case InlayHintKind::Parameter:
-    return 2;
-  case InlayHintKind::Designator: // This is an extension, don't serialize.
-    return nullptr;
+static llvm::StringLiteral toString(InlayHintKind K) {
+  switch (K) {
+  case InlayHintKind::ParameterHint:
+    return "parameter";
+  case InlayHintKind::TypeHint:
+    return "type";
+  case InlayHintKind::DesignatorHint:
+    return "designator";
   }
   llvm_unreachable("Unknown clang.clangd.InlayHintKind");
 }
 
+llvm::json::Value toJSON(InlayHintKind K) { return toString(K); }
+
 llvm::json::Value toJSON(const InlayHint &H) {
-  llvm::json::Object Result{{"position", H.position},
-                            {"label", H.label},
-                            {"paddingLeft", H.paddingLeft},
-                            {"paddingRight", H.paddingRight}};
-  auto K = toJSON(H.kind);
-  if (!K.getAsNull())
-    Result["kind"] = std::move(K);
-  return std::move(Result);
+  return llvm::json::Object{{"position", H.position},
+                            {"range", H.range},
+                            {"kind", H.kind},
+                            {"label", H.label}};
 }
 bool operator==(const InlayHint &A, const InlayHint &B) {
   return std::tie(A.position, A.range, A.kind, A.label) ==
@@ -1357,18 +1355,7 @@ bool operator<(const InlayHint &A, const InlayHint &B) {
 }
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, InlayHintKind Kind) {
-  auto ToString = [](InlayHintKind K) {
-    switch (K) {
-    case InlayHintKind::Parameter:
-      return "parameter";
-    case InlayHintKind::Type:
-      return "type";
-    case InlayHintKind::Designator:
-      return "designator";
-    }
-    llvm_unreachable("Unknown clang.clangd.InlayHintKind");
-  };
-  return OS << ToString(Kind);
+  return OS << toString(Kind);
 }
 
 static const char *toString(OffsetEncoding OE) {

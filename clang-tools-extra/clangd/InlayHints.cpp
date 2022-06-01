@@ -411,7 +411,7 @@ private:
 
       if (NameHint || ReferenceHint) {
         addInlayHint(Args[I]->getSourceRange(), HintSide::Left,
-                     InlayHintKind::Parameter, ReferenceHint ? "&" : "",
+                     InlayHintKind::ParameterHint, ReferenceHint ? "&" : "",
                      NameHint ? Name : "", ": ");
       }
     }
@@ -593,9 +593,9 @@ private:
     if (!Cfg.InlayHints.ConfigProperty)                                        \
       return;                                                                  \
     break
-      CHECK_KIND(Parameter, Parameters);
-      CHECK_KIND(Type, DeducedTypes);
-      CHECK_KIND(Designator, Designators);
+      CHECK_KIND(ParameterHint, Parameters);
+      CHECK_KIND(TypeHint, DeducedTypes);
+      CHECK_KIND(DesignatorHint, Designators);
 #undef CHECK_KIND
     }
 
@@ -614,10 +614,8 @@ private:
     // file that was included after the preamble), do not show in that case.
     if (!AST.getSourceManager().isWrittenInMainFile(FileRange->getBegin()))
       return;
-    bool PadLeft = Prefix.consume_front(" ");
-    bool PadRight = Suffix.consume_back(" ");
-    Results.push_back(InlayHint{LSPPos, (Prefix + Label + Suffix).str(), Kind,
-                                PadLeft, PadRight, LSPRange});
+    Results.push_back(
+        InlayHint{LSPPos, LSPRange, Kind, (Prefix + Label + Suffix).str()});
   }
 
   void addTypeHint(SourceRange R, QualType T, llvm::StringRef Prefix) {
@@ -631,12 +629,12 @@ private:
 
     std::string TypeName = T.getAsString(Policy);
     if (TypeName.length() < TypeNameLimit)
-      addInlayHint(R, HintSide::Right, InlayHintKind::Type, Prefix, TypeName,
-                   /*Suffix=*/"");
+      addInlayHint(R, HintSide::Right, InlayHintKind::TypeHint, Prefix,
+                   TypeName, /*Suffix=*/"");
   }
 
   void addDesignatorHint(SourceRange R, llvm::StringRef Text) {
-    addInlayHint(R, HintSide::Left, InlayHintKind::Designator,
+    addInlayHint(R, HintSide::Left, InlayHintKind::DesignatorHint,
                  /*Prefix=*/"", Text, /*Suffix=*/"=");
   }
 
